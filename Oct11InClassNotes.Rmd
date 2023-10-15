@@ -5,6 +5,8 @@ output: html_notebook
 
 Here's a change I applied
 
+Here's a change applied in the Github web browser.
+
 **Time to Play With Data A:**
 
 **(a)**
