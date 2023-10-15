@@ -3,7 +3,7 @@ title: "Data 602 - In Class Notes for October 11"
 output: html_notebook
 ---
 
-
+Here's a change I applied
 
 **Time to Play With Data A:**
 
