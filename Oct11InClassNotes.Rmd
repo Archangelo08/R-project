@@ -1,0 +1,320 @@
+---
+title: "Data 602 - In Class Notes for October 11"
+output: html_notebook
+---
+
+
+
+**Time to Play With Data A:**
+
+**(a)**
+
+```{r}
+oct6ttp1.df <- read.csv("https://raw.githubusercontent.com/Statman44/Data602/main/baseball.csv")
+```
+
+```{r}
+oct6ttp1.df = oct6ttp1.df %>%
+  mutate(winpct = wins/(wins + losses))
+```
+
+```{r}
+head(oct6ttp1.df, 4)
+tail(oct6ttp1.df, 4)
+```
+The scatterplot of the two variables **winpct** and average home **attendance** is provided below, where **attendance** is the total season attendance @ home games for a MLB team.  
+
+```{r}
+options(scipen=999)
+ggplot(oct6ttp1.df, aes(x = winpct, y = attendance)) + geom_point(col="blue", size=1, position = "jitter") + xlab("Winning Percentage") + ylab("Season Attendance at Home Games") + ggtitle("Plot: Winning % to Home Attendance") + geom_smooth(method="lm", col="red")
+```
+
+```{r}
+favstats(~attendance, data=oct6ttp1.df)
+favstats(~winpct, data=oct6ttp1.df)
+```
+
+**(b)**
+The correlation coefficient is computed with
+
+```{r}
+cor(~winpct, ~attendance, data=oct6ttp1.df)
+```
+and
+$$
+r = 0.436598 \approx 0.4366
+$$
+
+Note how the sign on $r$ is positive? And note the "numerical value" of $r$.....
+
+---------------------------------
+
+**Time to Play With Data B:**
+
+**(a)**
+Estimate the least squares line that estimates the model
+$$
+SeasonAttendance_{i} = A + (B*WinPct_{i}) + e_{i}
+$$
+
+Using the `lm` command:
+
+```{r}
+predict.seasonattendance <- lm(attendance ~ winpct, data = oct6ttp1.df)
+```
+
+```{r}
+predict.seasonattendance$coef
+```
+from which the estimate of the above model is:
+
+$$
+\widehat{SeasonAttendance}_{i} = -612607.7 + (4782137.1*WinPct_{i}) \hspace{0.5in} \text{(Note: There is no}\:\: e_{i} \:\:\text{term on the estimate of the model)}
+$$
+**Interpretation of b, estimate of B:** As the winning percentage increases by 1 unit, in this case a full 1.0 (1000%), then the season home attendance will increase by an *average* of 4782137 persons. Scaling this back, we can say that as the winning percentage increases by 0.01 (ie, 0.605 is 60.5% winning percentage), then
+$$
+\frac{4782137.1}{100} = 47821.371
+$$
+In other words, as a baseball team's winning percentage increases by 1% (or 0.01), the home attendance over the course of the sesason will **increase by an average/mean** of 47821.37, or approximatley 47821 persons. 
+
+**(b)** Winning percentage of **winpct = 0.405**?
+
+$$
+\begin{eqnarray}
+\widehat{SeasonAttendance}_{i} & = & -612607.7 + (4782137.1*0.405) \\
+                               & = & 1324158 \:\: \text{persons/fans}
+\end{eqnarray}
+$$
+```{r}
+-612607.7 + (4782137.1*0.405)
+```
+
+This can be done with the `predict` command:
+
+```{r}
+predict(predict.seasonattendance, data.frame(winpct=0.405))
+```
+
+Meaning? Consider all MLB baseball teams that have a winning percentage of 0.405: The mean/average home attendance for such baseball teams is 1324158 persons/fans in a season. 
+
+Consider **winpct = 0.608**?
+
+```{r}
+predict(predict.seasonattendance, data.frame(winpct=0.608))
+```
+
+$$
+\widehat{SeasonAttendance}_{i} = 2,294,932 \:\:\text{persons/fans}
+$$
+-------------------
+
+**Time to Play With Data C:**
+
+Check the conditions of the model.
+
+
+In this instance, I am going create a data frame called **ttpdiagnostic.df**:
+
+```{r}
+attendance.fits <- predict.seasonattendance$fitted.values #assigns predicted values to one vector
+attendance.values <- oct6ttp1.df$attendance #assigns observed values of y to another vector
+attendance.residuals <- predict.seasonattendance$residuals #assigns residuals to another vectdor
+```
+
+
+```{r}
+ttpdiagnostic.df <- data.frame(attendance.values, attendance.fits, attendance.residuals)
+```
+
+```{r}
+ttpdiagnostic.df
+```
+
+**(a)** A Normal probability plot of the residuals
+
+```{r}
+ggplot(ttpdiagnostic.df, aes(sample = attendance.residuals)) + stat_qq(col="blue", size = 1) + stat_qqline(col="red") + ggtitle("Normal Probability Plot of Residuals/Error Terms")
+```
+This checks the condition of *normalcy* in the residuals - AKA, the $y$-variable home season attendance fluctuates from one team to the next in accordance with a Normal distribution.
+
+**(b)**
+
+A residual plot:
+
+```{r}
+ggplot(ttpdiagnostic.df, aes(x = attendance.fits, y = attendance.residuals)) + geom_point(col="blue", size=1) + xlab("Predicted Values of Home Attendance in a Season") + ylab("Residuals") + ggtitle("Residual Plot") + geom_hline(yintercept=0, col="red", linetype="dashed")
+```
+
+**Time to Play With Data D:**
+
+1. Compute the value of $S_{e}$, which is used to estimate the common standard deviation $\sigma$ in the $y$-variable (home season attendance), regardless of the value of the $x$-variable (winning percentage)
+
+```{r}
+sum(ttpdiagnostic.df$attendance.residuals^2)
+sqrt(sum(ttpdiagnostic.df$attendance.residuals^2)/(838 - 2))  #note, n = 838
+```
+
+from which
+
+$$
+S_{e} = \sqrt{\frac{SSE}{n - 2}} = \sqrt{\frac{ 387058460537948}{838 - 2}} = 680432.6
+$$
+Alternatively, this can be obtained with the `aov` function
+
+```{r}
+aov(predict.seasonattendance)
+```
+
+from which
+$$
+SSR = 91156224715423 \hspace{0.5in} \text{and} \hspace{0.5in} SSE = 387058460537948 \hspace{0.5in} S_{e} = 680432.6
+$$
+
+The coefficient of determination $r^{2}$ is
+
+```{r}
+rsquared(predict.seasonattendance)
+```
+and
+$$
+r^{2} = \frac{91156224715423}{91156224715423 + 387058460537948} = 0.1906178
+$$
+
+19.06% of the variation in the season attendance can be explained by its linear relationship with/dependency on the MLB team's winning percentage. 
+
+---------------------------
+
+**Time to Play With Data E:** Compute the values of the standard deviation of the statistics $a$ and $b$.
+
+```{r}
+coef(summary(predict.seasonattendance))
+```
+From this output,
+$$
+S_{a} = 171986.2 \hspace{1in} S_{b} = 340811.3
+$$
+
+**Time To Play With Data F:**
+
+**(a)** The confidence interval for $A$, which in this case is the mean/average home attendance for a MLB team that has a **winpct = 0**:
+
+```{r}
+confint(predict.seasonattendance)
+```
+from which the 95% confidence interval for $A$ is
+$$
+-950183.1 \leq A \leq -275032.2
+$$
+
+**(b)**  If the $A$ term is negligible to the model, then $A = 0$:
+$$
+{\rm H}_{0}: A = 0 \hspace{1in} {\rm H}_{A}: A \ne 0 \:\: \text{(this term is not negligible to the model)}
+$$
+The test statistic computed is
+$$
+T_{Obs} = \frac{a - A^{*}}{S_{a}} = \frac{-612607.7 - 0}{171986.2} = -3.562
+$$
+The $P$-value is 
+$$
+P-\text{value} = P(T_{838 - 2} < -3.562)*\underbrace{2}_{\text{two-tailed test}} = 0.0003889
+$$
+```{r}
+pt(-3.562, 838 - 2)*2
+```
+```{r}
+coef(summary(predict.seasonattendance))
+```
+
+$$
+{\rm H}_{0}: A = -200000...\text{adjust the test statistic according}
+$$
+**Time to Play With Data G:** In this exercise, the focus is on the slope of the model $B$, which is where the relationship between the $x$-variable **winpct** and the $y$-variable **attendance** is encapsulated.
+
+**(a)** To test the claim that $B = 0$ is the same as testing that a team's home attendance is not linearly related to the team's winning percentage, and therefore winning percentage has NO EFFECT on a team's home attendance. 
+
+$$
+{\rm H}_{0}: B = 0 \:\: \text{(a team's season attendance cannot be expressed as a linear function of their winning percentage)} \\
+{\rm H}_{A}: B \ne 0 \:\: \text{(a team's season attendance CAN be expressed as a linear function of their winning percentage)} \\
+$$
+The value of the test statistic is
+$$
+
+T_{Obs} = \frac{b - B^{*}}{S_{b}} = \frac{4782137.1 - 0}{340811.3} = 14.032
+
+$$
+The $P$-value is 
+$$
+P-\text{value} = P(T_{838 - 2} > 14.032)*\underbrace{2}_{\text{two-tailed test}} = 0.0000000000000000000000000000000000000002550823 \approx 0
+$$
+```{r}
+(1 - pt(14.032, 838 - 2))*2
+```
+
+**(b)** Since the null hypothesis is rejected in part (a), and one CAN express a MLB baseball team's season attendance as a linear function of their winning percentage, the 95% confidence interval for $B$ is (obtained above)
+
+winpct      4113190.7 5451083.4
+
+$$
+4113190.7 \leq B \leq 5451083.4 \longrightarrow 41131.9 \leq ? \leq 54510.8
+$$
+The second version of the confidence interval corresponds to an increase in the $x$-variable by 0.01, in this instance an increase in the winning percentage by 1%. As a MLB baseball team's winning percentage increases by 1%, their season home attendance will increase by an AVERAGE of anywhere between 41132 to 54511 people/fans. 
+
+**Time to Paly With Data H:**
+
+Here is the ANOVA table:
+
+```{r}
+summary(aov(predict.seasonattendance))
+```
+
+From which
+$$
+F_{Obs} = \frac{91156224715423/1}{387058460537948/836} = 196.9
+$$
+
+```{r}
+1 - pf(196.9, 1, 838-2)
+```
+Note that 
+$$
+T^{2}_{Obs, B = 0} = (14.032)^2 = 196.897 \approx 196.9 = F_{Obs}
+$$
+The $P$-value of the $F$-test of linear appropriateness is
+$$
+P-\text{value} = P(F_{1, 838 - 2} > 196.9) \approx 0
+$$
+The value of $F_{Obs}$ can also be obtained via the `summary` command below:
+
+```{r}
+summary(predict.seasonattendance)
+```
+
+**Time to Play With Data I:** 
+
+**(a)** with 95% level of confidence, capture the $\mu_{SeasonAttendance|x = 0.535}$:
+
+```{r}
+predict(predict.seasonattendance, newdata=data.frame(winpct=0.535), interval = "predict")
+```
+
+From this output:
+
+$$
+\widehat{SeasonAttendance}_{i} = -612607.7 + (4782137.1*0.535) = 1945836 \\
+609275.7 \leq SeasonAttendance_{x = 0.535} \leq 3282396
+$$
+A baseball team with a season winning percentage of 0.535, or 53.5%, will have a total season attendance somewhere betweeen 609276 persons and 3282396 persons.
+
+**(b)** Capture $\mu_{SeasonAttendance|winpct = 0.500}$:
+
+```{r}
+predict(predict.seasonattendance, newdata=data.frame(winpct=0.500), interval = "conf")
+```
+
+From this output:
+
+$$
+\widehat{SeasonAttendance}_{i} = -612607.7 + (4782137.1*0.500) = 1778461 \\
+1732325 \leq \mu_{SeasonAttendance|x = 0.500} \leq 1824597
+$$
+For all MLB baseball teams with a 0.500, or 50%, winning percentage, the mean/average season attendance is somewhere between 1732325 to 1824597 persons. 
